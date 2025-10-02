@@ -1,7 +1,7 @@
 # flask
 
 
-# # pip install load_dotenv 설치 필요
+# pip install load_dotenv 설치 필요
 
 ## env 파일 설정
 DB_HOST=localhost \
