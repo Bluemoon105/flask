@@ -8,6 +8,57 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        /* ===== styles_for_book_details (이 부분을 추가하세요) ===== */
+      .details-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem 1.5rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 0;
+      }
+      .details-info-grid .info-item {
+        display: flex;
+        flex-direction: column;
+      }
+      .details-info-grid .info-item span:first-child {
+        font-size: 0.9rem;
+        color: var(--text-secondary-color);
+        margin-bottom: 0.25rem;
+      }
+      .details-info-grid .info-item span:last-child, 
+      .details-info-grid .info-item div {
+        font-size: 1rem;
+        font-weight: 500;
+      }
+      .original-price {
+        text-decoration: line-through;
+        color: var(--text-secondary-color);
+        font-size: 0.9em;
+        margin-right: 0.5rem;
+      }
+      .sale-price {
+        color: var(--secondary-color);
+        font-weight: bold;
+      }
+      .details-link-button {
+        display: inline-block;
+        background-color: var(--secondary-color);
+        color: #3c1e1e;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        transition: opacity 0.2s;
+      }
+      .details-link-button:hover {
+        opacity: 0.8;
+      }
+      /* ===== END of styles_for_book_details ===== */
       :root {
         --background-color: #121212;
         --surface-color: #1e1e1e;
@@ -218,18 +269,23 @@
               });
           };
 
-          const renderBookResults = (books) => {
+const renderBookResults = (books) => {
               books.forEach(book => {
                   const posterStyle = book.thumbnail ? `style="background-image: url(${book.thumbnail})"` : '';
                   const coverContent = book.thumbnail ? '' : '<span class="cover-placeholder">표지 없음</span>';
-                  const card = $(`<div class="result-card" data-type="book" data-id="${book.isbn}"><div class="cover" ${posterStyle}>${coverContent}</div><div class="title">${book.title} - ${book.authors.join(', ')}</div></div>`);
+                  
+                  // ▼▼▼▼▼ 이 부분을 수정하세요 ▼▼▼▼▼
+                  const isbn = book.isbn.split(' ').pop(); // ISBN이 2개일 경우(공백 구분) 뒤쪽의 ISBN13을 사용
+                  const card = $(`<div class="result-card" data-type="book" data-id="${isbn}"><div class="cover" ${posterStyle}>${coverContent}</div><div class="title">${book.title} - ${book.authors.join(', ')}</div></div>`);
+                  // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
                   $resultsGrid.append(card);
               });
           };
 
           const updatePagination = (meta, type) => {
               $pagination.empty();
-              const totalPages = type === 'movie' ? meta.total_pages : Math.ceil(meta.pageable_count / 10);
+              const totalPages = type === 'movie' ? meta.total_pages : Math.ceil(meta.pageable_count / 20);
               if (totalPages <= 1) return;
 
               const createPageItem = (pageNumber, text, isDisabled = false, isActive = false) => {
@@ -302,7 +358,8 @@
           };
 
           const searchBooks = async (query, page) => {
-              const response = await kakaoAxios.get('', { params: { query, target: 'title', page, size: 10 } });
+              // 아래 params의 size 값을 20으로 변경
+              const response = await kakaoAxios.get('', { params: { query, target: 'title', page, size: 20 } }); // size: 10 -> 20
               renderBookResults(response.data.documents);
               updatePagination(response.data.meta, 'book');
           };
