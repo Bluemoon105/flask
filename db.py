@@ -1,7 +1,7 @@
 # db.py
 import os
 import pymysql
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
 
 # .env 파일 읽기
 load_dotenv()
