@@ -13,7 +13,7 @@ def home():
     conn = get_db_connection()
     if conn:
         conn.close()
-    return render_template("index.html", name="예지")
+    return render_template("index.html", name="name")
 
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "False") == "True"
