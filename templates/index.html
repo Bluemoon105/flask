@@ -3,60 +3,383 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineLit</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Cine & Lit Explorer: 영화 & 도서 탐색기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --background-color: #121212;
+        --surface-color: #1e1e1e;
+        --primary-color: #01b4e4; /* TMDB Blue */
+        --primary-hover-color: #03d5ff;
+        --secondary-color: #f7e600; /* Kakao Yellow */
+        --text-color: #e0e0e0;
+        --text-secondary-color: #a0a0a0;
+        --border-color: #333;
+        --shadow-color: rgba(0, 0, 0, 0.5);
+        --light-gray-color: #f0f0f0;
+        --dark-gray-color: #555;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      #root { display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+      .container { width: 100%; max-width: 1200px; }
+      .header { text-align: center; }
+      .header h1 { font-size: 3rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem; }
+      .header p { font-size: 1.1rem; color: var(--text-secondary-color); margin-bottom: 2rem; }
+      .search-form { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+      
+      .search-type-toggle { display: flex; background-color: var(--surface-color); border-radius: 50px; padding: 0.25rem; }
+      .search-type-toggle button { padding: 0.5rem 1.5rem; border: none; background-color: transparent; color: var(--text-secondary-color); font-size: 1rem; cursor: pointer; border-radius: 50px; transition: all 0.3s ease; }
+      .search-type-toggle button.active.movie { background-color: var(--primary-color); color: white; font-weight: 500; }
+      .search-type-toggle button.active.book { background-color: var(--secondary-color); color: #3c1e1e; font-weight: 500; }
+
+      .search-bar { display: flex; width: 100%; max-width: 600px; background-color: var(--surface-color); border-radius: 50px; padding: 0.5rem; box-shadow: 0 4px 15px var(--shadow-color); }
+      .search-bar input { flex-grow: 1; border: none; background: transparent; color: var(--text-color); font-size: 1.1rem; padding: 0.5rem 1rem; }
+      .search-bar input:focus { outline: none; }
+      .search-bar button { background-color: var(--primary-color); color: white; border: none; border-radius: 50px; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+      .search-bar button:hover { background-color: var(--primary-hover-color); }
+      .search-bar button:disabled { background-color: var(--dark-gray-color); cursor: not-allowed; }
+      
+      .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; }
+      .result-card { background-color: var(--surface-color); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; box-shadow: 0 4px 10px var(--shadow-color); }
+      .result-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7); }
+      .result-card .cover { width: 100%; aspect-ratio: 2 / 3; background-color: #333; display: flex; align-items: center; justify-content: center; color: var(--text-secondary-color); background-size: cover; background-position: center; }
+      .result-card .cover-placeholder { font-size: 0.9rem; }
+      .result-card .title { padding: 1rem; font-weight: 500; height: 4.5em; overflow: hidden; text-overflow: ellipsis; }
+
+      .status-message { margin-top: 3rem; color: var(--text-secondary-color); font-size: 1.2rem; text-align: center; }
+      .status-message.error { color: #ff6b6b; }
+      
+      .pagination { display: flex; justify-content: center; list-style: none; padding: 0; margin: 2rem 0;}
+      .pagination .page-item { margin: 0 5px; }
+      .pagination .page-link { color: var(--primary-color); background-color: transparent; border: 1px solid var(--border-color); cursor: pointer; padding: 0.5rem 1rem; display: block; border-radius: 4px; transition: all 0.2s;}
+      .pagination .page-item.active .page-link { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+      .pagination .page-item:not(.disabled):hover .page-link { background-color: var(--border-color); }
+      .pagination .page-item.disabled .page-link { color: var(--dark-gray-color); border-color: var(--dark-gray-color); cursor: not-allowed; }
+
+      /* Details Page Styles - Common */
+      .details-container { background-color: var(--surface-color); border-radius: 16px; width: 100%; max-width: 900px; margin: 0 auto; padding: 2rem; text-align: left; display: flex; gap: 2rem; }
+      .details-poster { flex-shrink: 0; width: 300px; }
+      .details-poster img { width: 100%; border-radius: 12px; }
+      .details-main-content { flex-grow: 1; }
+      .back-button { background: none; border: 1px solid var(--border-color); color: var(--text-secondary-color); padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; margin-bottom: 2rem; font-size: 0.9rem; transition: all 0.2s; }
+      .back-button:hover { background-color: var(--border-color); color: var(--text-color); }
+      .details-container h2 { font-size: 2.5rem; margin-bottom: 0.25rem; }
+      .details-container .meta { color: var(--text-secondary-color); margin-bottom: 1rem; display: block; }
+      .details-info h3 { font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.5rem; border-left: 3px solid var(--primary-color); padding-left: 0.75rem; }
+      .details-info.book h3 { border-left-color: var(--secondary-color); }
+      .details-info p { line-height: 1.7; color: var(--text-color); }
+      
+      /* Rating, Comments, etc. omitted for brevity, but same as before */
+      .rating-wrapper { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+      .star-rating-display { display: flex; align-items: center; gap: 0.2rem; }
+      .rating-text { font-size: 1.1rem; font-weight: 500; color: var(--text-secondary-color); }
+      .comments-section { margin-top: 2.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; }
+      .comments-section h3 { font-size: 1.2rem; color: var(--primary-color); margin-bottom: 1rem; padding-left: 0; border-left: none; }
+      .comment-form { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+      .comment-form-header { text-align: center; }
+      .comment-form-header p { font-size: 1.1rem; font-weight: 500; margin-bottom: 0.25rem; }
+      .comment-form-header span { font-size: 0.9rem; color: var(--text-secondary-color); }
+      .star-rating-input { display: flex; justify-content: center; gap: 0.5rem; }
+      .star-rating-input span { cursor: pointer; transition: transform 0.1s ease; }
+      .star-rating-input span:hover { transform: scale(1.1); }
+      .comment-input-container { display: flex; gap: 0.5rem; }
+      .comment-textarea { flex-grow: 1; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-color); font-size: 1rem; padding: 0.75rem 1rem; border-radius: 8px; resize: vertical; font-family: inherit; }
+      .comment-textarea:focus { outline: none; border-color: var(--primary-color); }
+      .comment-input-container button { background-color: var(--dark-gray-color); color: var(--light-gray-color); border: none; border-radius: 8px; padding: 0 2rem; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+      .comment-input-container button:hover { background-color: var(--primary-color); }
+      .comment-form-options { display: flex; justify-content: flex-end; }
+      .comment-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+      .sort-options { display: flex; gap: 1rem; }
+      .sort-options button { background: none; border: none; color: var(--text-secondary-color); cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+      .sort-options button.active { color: var(--text-color); font-weight: 700; }
+      .spoiler-toggle { display: inline-flex; align-items: center; cursor: pointer; gap: 0.5rem; }
+      .spoiler-toggle .label-text { font-size: 0.9rem; color: var(--text-secondary-color); }
+      .spoiler-toggle input { display: none; }
+      .spoiler-toggle .slider { position: relative; width: 34px; height: 20px; background-color: var(--dark-gray-color); border-radius: 17px; transition: background-color 0.3s; }
+      .spoiler-toggle .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background-color: white; border-radius: 50%; transition: transform 0.3s; }
+      .spoiler-toggle input:checked + .slider { background-color: var(--primary-color); }
+      .spoiler-toggle input:checked + .slider::before { transform: translateX(14px); }
+      .comment-list { display: flex; flex-direction: column; gap: 1rem; }
+      .comment-item { padding: 1rem 0; border-bottom: 1px solid var(--border-color); }
+      .comment-item:last-child { border-bottom: none; }
+      .comment-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+      .comment-rating-value { font-weight: bold; font-size: 1.1rem; }
+      .comment-text { margin-bottom: 0.75rem; }
+      .comment-meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary-color); margin-bottom: 0.75rem; }
+      .comment-meta a { color: var(--text-secondary-color); text-decoration: none; }
+      .comment-meta a:hover { text-decoration: underline; }
+      .comment-actions { display: flex; gap: 0.5rem; }
+      .action-btn { display: flex; align-items: center; gap: 0.4rem; background-color: transparent; border: 1px solid var(--dark-gray-color); color: var(--text-secondary-color); padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+      .action-btn:hover { border-color: var(--text-secondary-color); color: var(--text-color); }
+      .action-btn svg { stroke: var(--text-secondary-color); }
+      .spoiler-warning { background-color: var(--background-color); border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
+      .spoiler-warning p { margin-bottom: 0.5rem; }
+      .spoiler-warning button { background: none; border: none; color: var(--primary-hover-color); text-decoration: underline; cursor: pointer; font-size: 0.9rem; }
+      .no-comments { color: var(--text-secondary-color); text-align: center; padding: 2rem 0; }
+      @media (max-width: 768px) { .details-container { flex-direction: column; align-items: center; text-align: center; } .details-poster { width: 100%; max-width: 250px; } .details-info h3 { padding-left: 0; border-left: none; text-align: center; } .details-info p { text-align: left; } }
+      @media (max-width: 640px) { .search-bar { flex-direction: column; border-radius: 20px; gap: 0.5rem; padding: 0.75rem; } .search-bar button { width: 100%; } .comment-controls { flex-direction: column; align-items: flex-start; gap: 1rem; } }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>CineLit</h1>
-            <p>AI가 추천하는 영화와 도서의 세계를 탐험하세요{{ name}}</p>
-        </header>
-
-        <form id="search-form" class="search-form">
-            <div class="search-type-toggle">
-                <button type="button" data-type="movie" class="active">영화</button>
-                <button type="button" data-type="book">도서</button>
-            </div>
-            <div class="search-bar">
-                <input type="text" id="search-input" placeholder="검색어를 입력하세요...">
-                <button type="submit" id="search-button">검색</button>
-            </div>
-        </form>
-
-        <div id="loading" class="loading" style="display:none;">AI가 컨텐츠를 생성하고 있습니다...</div>
-        <div id="error" class="error" style="display:none;"></div>
-        <div id="placeholder" class="placeholder">궁금한 영화나 책을 검색해보세요.</div>
-
-        <div id="results-grid" class="results-grid"></div>
-
-        <div id="modal" class="modal-overlay" style="display:none;">
-            <div class="modal-content">
-                <button id="modal-close" class="modal-close">&times;</button>
-                <div class="details-wrapper">
-                    <div class="details-cover"></div>
-                    <div class="details-info">
-                        <div id="details-loading" class="loading" style="display:none;">상세 정보를 생성 중입니다...</div>
-                        <div id="details-content" style="display:none;">
-                            <h2 id="details-title"></h2>
-                            <p class="meta" id="details-meta"></p>
-
-                            <h3>시놉시스</h3>
-                            <p id="details-synopsis"></p>
-
-                            <h3>AI 평론</h3>
-                            <p id="details-review"></p>
-
-                            <h3>추천 작품</h3>
-                            <ul id="details-recommendations"></ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <main id="root">
+        <div class="container" id="search-page">
+            <header class="header">
+              <h1>Cine & Lit Explorer</h1>
+              <p>API로 영화와 도서의 세계를 탐험하세요</p>
+            </header>
+  
+            <form class="search-form">
+              <div class="search-type-toggle">
+                  <button type="button" data-type="movie" class="active movie">영화</button>
+                  <button type="button" data-type="book" class="book">도서</button>
+              </div>
+              <div class="search-bar">
+                  <input 
+                      type="text" 
+                      placeholder="영화 제목을 검색하세요..."
+                  />
+                  <button type="submit">검색</button>
+              </div>
+            </form>
+            <div class="status-message" style="display: none;"></div>
+            <div class="status-message placeholder">궁금한 영화나 책을 검색해보세요.</div>
+            <div class="results-grid"></div>
+            <div class="pagination"></div>
         </div>
 
-    </div>
+        <div class="container" id="details-page" style="display: none;">
+            <button class="back-button">&larr; 검색 결과로 돌아가기</button>
+            <div class="status-message" style="display: none;"></div>
+            <div class="details-content"></div>
+        </div>
+    </main>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script type="module">
+      $(document).ready(function() {
+          // --- API CONFIG ---
+          const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
+          const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+          const TMDB_BEARER_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2YjA3MGM5ODk0MTY0MTFhNTEzYzRjNmM3OGFmMDc2OSIsIm5iZiI6MTc0NzIxODk4NS44Miwic3ViIjoiNjgyNDcyMjk0OTMzZmUxNDU1MzMzZjM4Iiwic2NvcGVzIjpbImFwaV9yZWFkIl0sInZlcnNpb24iOjF9.rBrd8bY3jM-JG5YfEsj_A6ApxP3KpzZQpw9yyGnRuUw';
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+          const KAKAO_API_BASE_URL = 'https://dapi.kakao.com/v3/search/book';
+          const KAKAO_API_KEY = '41fc150e1acbe4e67e080a6c497099b2';
+
+          const tmdbAxios = axios.create({
+              baseURL: TMDB_API_BASE_URL,
+              headers: { 'Authorization': `Bearer ${TMDB_BEARER_TOKEN}`, 'Accept': 'application/json' }
+          });
+          const kakaoAxios = axios.create({
+              baseURL: KAKAO_API_BASE_URL,
+              headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
+          });
+
+          // --- STATE ---
+          let searchType = 'movie'; // 'movie' or 'book'
+          let currentPage = 1;
+          let currentQuery = '';
+          let comments = [], revealedSpoilers = new Set(), commentSort = 'likes', showSpoilers = false, newUserRating = 0, isLoading = false;
+
+          // --- DOM SELECTORS ---
+          const $searchPage = $('#search-page'), $detailsPage = $('#details-page');
+          const $searchInput = $searchPage.find('.search-bar input'), $searchButton = $searchPage.find('.search-bar button');
+          const $placeholder = $('.placeholder'), $resultsGrid = $('.results-grid'), $pagination = $('.pagination');
+          const $detailsContent = $('#details-page .details-content');
+
+          // --- ICONS & TEMPLATES (Omitted for brevity - same as before) ---
+          const StarIcon = (size = 24, fill = "none", stroke = "currentColor") => `<svg height="${size}" width="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="1.5"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>`;
+          const ThumbsUpIcon = (size = 16) => `<svg height="${size}" width="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12" /><path d="M18 10V5c0-1.1-.9-2-2-2s-2 .9-2 2v5h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-4.5" /></svg>`;
+          const ThumbsDownIcon = (size = 16) => `<svg height="${size}" width="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14V2" /><path d="M18 14v5c0 1.1-.9-2-2-2s-2-.9-2-2v-5h3a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4.5" /></svg>`;
+          const createStarRatingHTML = (rating, size = 24) => {let starsHTML = ''; for (let i = 1; i <= 5; i++) { const fillPercent = i - rating <= 0 ? 100 : (i - rating < 1 ? (1 - (i - rating)) * 100 : 0); starsHTML += `<div style="position: relative; display: inline-block;">${StarIcon(size, 'var(--surface-color)', 'var(--primary-color)')}<div style="position: absolute; top: 0; left: 0; width: ${fillPercent}%; height: 100%; overflow: hidden;">${StarIcon(size, 'var(--primary-color)', 'var(--primary-color)')}</div></div>`; } return `<div class="star-rating-display">${starsHTML}</div>`; };
+          
+          // --- UI HELPER FUNCTIONS ---
+          const showStatus = (page, message, isError = false) => { const $status = page === 'search' ? $searchPage.find('.status-message') : $detailsPage.find('.status-message'); $status.text(message).toggleClass('error', isError).show(); if (page === 'search') $placeholder.hide(); };
+          const hideStatus = (page) => { const $status = page === 'search' ? $searchPage.find('.status-message') : $detailsPage.find('.status-message'); $status.hide(); }
+          const setLoading = (page, loading) => { isLoading = loading; $searchButton.prop('disabled', loading); if (loading) { showStatus(page, '데이터를 불러오는 중입니다...'); if(page === 'search') {$resultsGrid.empty(); $pagination.empty();} } else { hideStatus(page); }};
+
+          // --- RENDER FUNCTIONS ---
+          const renderMovieResults = (movies) => {
+              movies.forEach(item => {
+                  const posterStyle = item.poster_path ? `style="background-image: url(${TMDB_IMAGE_BASE_URL}${item.poster_path})"` : '';
+                  const coverContent = item.poster_path ? '' : '<span class="cover-placeholder">포스터 없음</span>';
+                  const card = $(`<div class="result-card" data-type="movie" data-id="${item.id}"><div class="cover" ${posterStyle}>${coverContent}</div><div class="title">${item.title} (${(item.release_date || '').substring(0,4)})</div></div>`);
+                  $resultsGrid.append(card);
+              });
+          };
+
+          const renderBookResults = (books) => {
+              books.forEach(book => {
+                  const posterStyle = book.thumbnail ? `style="background-image: url(${book.thumbnail})"` : '';
+                  const coverContent = book.thumbnail ? '' : '<span class="cover-placeholder">표지 없음</span>';
+                  const card = $(`<div class="result-card" data-type="book" data-id="${book.isbn}"><div class="cover" ${posterStyle}>${coverContent}</div><div class="title">${book.title} - ${book.authors.join(', ')}</div></div>`);
+                  $resultsGrid.append(card);
+              });
+          };
+
+          const updatePagination = (meta, type) => {
+              $pagination.empty();
+              const totalPages = type === 'movie' ? meta.total_pages : Math.ceil(meta.pageable_count / 10);
+              if (totalPages <= 1) return;
+
+              const createPageItem = (pageNumber, text, isDisabled = false, isActive = false) => {
+                  const $li = $('<li>').addClass('page-item');
+                  if (isDisabled) $li.addClass('disabled');
+                  if (isActive) $li.addClass('active');
+                  const $a = $('<a>').addClass('page-link').text(text || pageNumber).on('click', (e) => {
+                      e.preventDefault();
+                      if (!isDisabled) handleSearch(null, pageNumber);
+                  });
+                  return $li.append($a);
+              };
+
+              $pagination.append(createPageItem(currentPage - 1, '이전', currentPage === 1));
+
+              for (let i = 1; i <= Math.min(totalPages, 500); i++) { // TMDB max page is 500
+                 if (i === currentPage) {
+                      $pagination.append(createPageItem(i, null, false, true));
+                  } else if (i >= currentPage - 2 && i <= currentPage + 2) {
+                      $pagination.append(createPageItem(i));
+                  }
+              }
+
+              $pagination.append(createPageItem(currentPage + 1, '다음', currentPage >= totalPages));
+          };
+
+          const renderMovieDetailsPage = (details) => {
+              // ... same as before, no changes needed
+              comments = []; const ratingOutOf5 = details.vote_average / 2; const posterUrl = details.poster_path ? `${TMDB_IMAGE_BASE_URL}${details.poster_path}` : ''; const detailsHTML = `<div class="details-container"><div class="details-poster">${posterUrl ? `<img src="${posterUrl}" alt="${details.title} poster">` : `<div class="cover"><span class="cover-placeholder">포스터 없음</span></div>`}</div><div class="details-main-content"><h2>${details.title}</h2><p class="meta">${details.release_date} • ${details.genres.map(g => g.name).join(', ')}</p><div class="rating-wrapper">${createStarRatingHTML(ratingOutOf5, 32)}<span class="rating-text">${ratingOutOf5.toFixed(1)} / 5.0 (${details.vote_count} votes)</span></div><div class="details-info"><h3>개요</h3><p>${details.overview || '제공된 개요 정보가 없습니다.'}</p></div><div class="comments-section"><h3 id="comment-count">댓글 (0)</h3><form class="comment-form"><div class="comment-form-header"><p>감상평</p><span>별점을 선택해주세요.</span></div><div class="star-rating-input">${[...Array(5)].map((_, i) => `<span data-rating="${i+1}">${StarIcon(32, 'none', 'var(--primary-color)')}</span>`).join('')}</div><div class="comment-input-container"><textarea placeholder="감상평을 작성해주세요." class="comment-textarea" rows="3"></textarea><button type="submit">등록</button></div><div class="comment-form-options"><label class="spoiler-toggle"><input type="checkbox" class="new-comment-spoiler" /><span class="slider"></span><span class="label-text">스포일러 포함</span></label></div></form><div class="comment-controls"><div class="sort-options"><button class="sort-btn ${commentSort === 'likes' ? 'active' : ''}" data-sort="likes">• 공감순</button><button class="sort-btn ${commentSort === 'newest' ? 'active' : ''}" data-sort="newest">• 최신순</button></div><label class="spoiler-toggle"><input type="checkbox" class="show-spoilers-toggle" ${showSpoilers ? 'checked' : ''} /><span class="slider"></span><span class="label-text">스포일러 포함</span></label></div><div class="comment-list"></div></div></div></div>`; $detailsContent.html(detailsHTML); renderComments();
+          };
+          
+          const renderBookDetailsPage = (book) => {
+              comments = [];
+              const posterUrl = book.thumbnail || '';
+              const detailsHTML = `
+                <div class="details-container">
+                    <div class="details-poster">
+                        ${posterUrl ? `<img src="${posterUrl}" alt="${book.title} cover">` : `<div class="cover"><span class="cover-placeholder">표지 없음</span></div>`}
+                    </div>
+                    <div class="details-main-content">
+                        <h2>${book.title}</h2>
+                        <p class="meta">${book.authors.join(', ')} • ${book.publisher} (${book.datetime.substring(0,10)})</p>
+                        <div class="details-info book">
+                            <h3>소개</h3><p>${book.contents || '제공된 소개 정보가 없습니다.'}</p>
+                        </div>
+                        <div class="comments-section">
+                            <h3 id="comment-count">댓글 (0)</h3>
+                             <form class="comment-form">
+                                <div class="comment-form-header"><p>감상평</p><span>별점을 선택해주세요.</span></div>
+                              <div class="star-rating-input">${[...Array(5)].map((_, i) => `<span data-rating="${i+1}">${StarIcon(32, 'none', 'var(--primary-color)')}</span>`).join('')}</div>
+                              <div class="comment-input-container"><textarea placeholder="감상평을 작성해주세요." class="comment-textarea" rows="3"></textarea><button type="submit">등록</button></div>
+                               <div class="comment-form-options"><label class="spoiler-toggle"><input type="checkbox" class="new-comment-spoiler" /><span class="slider"></span><span class="label-text">스포일러 포함</span></label></div>
+                          </form>
+                          <div class="comment-controls"><div class="sort-options"><button class="sort-btn active" data-sort="likes">• 공감순</button><button class="sort-btn" data-sort="newest">• 최신순</button></div><label class="spoiler-toggle"><input type="checkbox" class="show-spoilers-toggle"/><span class="slider"></span><span class="label-text">스포일러 포함</span></label></div>
+                          <div class="comment-list"></div>
+                        </div>
+                    </div>
+                </div>`;
+              $detailsContent.html(detailsHTML);
+              renderComments();
+          };
+
+          const renderComments = () => { const sorted = [...comments]; if (commentSort === 'likes') { sorted.sort((a, b) => b.likes - a.likes); } else if (commentSort === 'newest') {} const $commentList = $detailsPage.find('.comment-list'); $commentList.empty(); if (sorted.length === 0) { $commentList.html('<p class="no-comments">아직 댓글이 없습니다. 첫 감상평을 남겨보세요!</p>'); return; } sorted.forEach((comment, index) => { const originalIndex = comments.findIndex(c => c === comment); const isSpoilerHidden = comment.isSpoiler && !showSpoilers && !revealedSpoilers.has(originalIndex); const commentHTML = `<div class="comment-item" data-original-index="${originalIndex}"><div class="comment-header">${createStarRatingHTML(comment.rating, 16)}<span class="comment-rating-value">${comment.rating.toFixed(1)}</span></div>${isSpoilerHidden ? `<div class="spoiler-warning"><p>스포일러가 포함된 감상평입니다.</p><button class="reveal-spoiler-btn">감상평보기</button></div>` : `<p class="comment-text">${comment.text}</p>`}<div class="comment-meta"><span>${comment.username}</span> • <span>${comment.timestamp}</span> • <a href="#" class="report-btn">신고</a></div><div class="comment-actions"><button class="action-btn like-btn">${ThumbsUpIcon()} ${comment.likes}</button><button class="action-btn dislike-btn">${ThumbsDownIcon()} ${comment.dislikes}</button></div></div>`; $commentList.append(commentHTML); }); };
+
+          // --- API CALL LOGIC ---
+          const searchMovies = async (query, page) => {
+              const response = await tmdbAxios.get('/search/movie', { params: { query, include_adult: false, language: 'ko-KR', page } });
+              renderMovieResults(response.data.results);
+              updatePagination(response.data, 'movie');
+          };
+
+          const searchBooks = async (query, page) => {
+              const response = await kakaoAxios.get('', { params: { query, target: 'title', page, size: 10 } });
+              renderBookResults(response.data.documents);
+              updatePagination(response.data.meta, 'book');
+          };
+          
+          const handleSearch = async (e, page = 1) => {
+              if (e) e.preventDefault();
+              
+              const query = $searchInput.val().trim();
+              if(!query && !currentQuery) { showStatus('search', "검색어를 입력해주세요.", true); return; }
+
+              currentPage = page;
+              currentQuery = query || currentQuery; // Keep last query for pagination
+              
+              setLoading('search', true);
+              try {
+                  if (searchType === 'movie') {
+                      await searchMovies(currentQuery, currentPage);
+                  } else {
+                      await searchBooks(currentQuery, currentPage);
+                  }
+                  $placeholder.hide();
+              } catch (err) {
+                  const message = err.response?.data?.message || err.message;
+                  showStatus('search', `검색 중 오류가 발생했습니다: ${message}`, true);
+              } finally {
+                  setLoading('search', false);
+              }
+          };
+
+          const fetchMovieDetails = async (movieId) => { setLoading('details', true); $detailsContent.empty(); try { const response = await tmdbAxios.get(`/movie/${movieId}`, { params: { language: 'ko-KR' } }); renderMovieDetailsPage(response.data); } catch (err) { showStatus('details', `상세 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`, true); } finally { setLoading('details', false); }};
+          const fetchBookDetails = async (isbn) => { setLoading('details', true); $detailsContent.empty(); try { const response = await kakaoAxios.get('', { params: { query: isbn, target: 'isbn', size: 1 } }); if (response.data.documents.length > 0) { renderBookDetailsPage(response.data.documents[0]); } else { showStatus('details', '해당 ISBN의 책을 찾을 수 없습니다.', true); } } catch (err) { showStatus('details', `상세 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`, true); } finally { setLoading('details', false); }};
+
+          // --- EVENT LISTENERS ---
+          $('.search-form').on('submit', handleSearch);
+          $('.search-type-toggle').on('click', 'button', function() {
+              const $btn = $(this);
+              searchType = $btn.data('type');
+              $('.search-type-toggle button').removeClass('active');
+              $btn.addClass('active');
+              $searchInput.attr('placeholder', searchType === 'movie' ? '영화 제목을 검색하세요...' : '도서 제목을 검색하세요...');
+          });
+          $resultsGrid.on('click', '.result-card', function() {
+              const type = $(this).data('type');
+              const id = $(this).data('id');
+              window.location.hash = `details/${type}/${id}`;
+          });
+          $('.back-button').on('click', () => { window.location.hash = ''; });
+          
+          // Comment listeners (Omitted for brevity, they are inside the details page render)
+          $detailsContent.on('mouseenter', '.star-rating-input span', function() { const rating = $(this).data('rating'); $('.star-rating-input span').each(function() { $(this).find('svg').attr('fill', $(this).data('rating') <= rating ? 'var(--primary-color)' : 'none'); }); }).on('mouseleave', '.star-rating-input', function() { $('.star-rating-input span').each(function() { $(this).find('svg').attr('fill', $(this).data('rating') <= newUserRating ? 'var(--primary-color)' : 'none'); }); }).on('click', '.star-rating-input span', function() { newUserRating = $(this).data('rating'); });
+          $detailsContent.on('submit', '.comment-form', function(e) { e.preventDefault(); const text = $('.comment-textarea').val().trim(); if (!text || newUserRating === 0) { alert("별점과 감상평을 모두 입력해주세요."); return; } const newComment = { username: `user${Math.floor(Math.random() * 9000) + 1000}`, timestamp: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\s/g, '').replace(/\.$/, ''), text: text, rating: newUserRating, isSpoiler: $('.new-comment-spoiler').is(':checked'), likes: 0, dislikes: 0, }; comments.unshift(newComment); renderComments(); $(this)[0].reset(); newUserRating = 0; $('.star-rating-input span svg').attr('fill', 'none'); $('#comment-count').text(`댓글 (${comments.length})`); });
+          $detailsContent.on('click', '.sort-btn', function() { commentSort = $(this).data('sort'); $('.sort-btn').removeClass('active'); $(this).addClass('active'); renderComments(); });
+          $detailsContent.on('change', '.show-spoilers-toggle', function() { showSpoilers = $(this).is(':checked'); if (!showSpoilers) revealedSpoilers.clear(); renderComments(); });
+          $detailsContent.on('click', '.reveal-spoiler-btn', function() { const originalIndex = $(this).closest('.comment-item').data('original-index'); revealedSpoilers.add(originalIndex); renderComments(); });
+          $detailsContent.on('click', '.like-btn, .dislike-btn', function() { const $item = $(this).closest('.comment-item'); const originalIndex = $item.data('original-index'); const action = $(this).hasClass('like-btn') ? 'likes' : 'dislikes'; const alreadyVoted = $item.data(`voted-${action}`); if (!alreadyVoted) { comments[originalIndex][action]++; $item.data(`voted-${action}`, true); renderComments(); } });
+          $detailsContent.on('click', '.report-btn', (e) => { e.preventDefault(); alert('신고 기능은 구현되지 않았습니다.'); });
+          
+          // --- ROUTING ---
+          const handleHashChange = () => {
+              const hash = window.location.hash.slice(1);
+              if (hash.startsWith('details/')) {
+                  const [, type, id] = hash.split('/');
+                  $searchPage.hide();
+                  $detailsPage.show();
+                  if (type === 'movie') fetchMovieDetails(id);
+                  else if (type === 'book') fetchBookDetails(id);
+              } else {
+                  $detailsPage.hide();
+                  $searchPage.show();
+                  $detailsContent.empty();
+                  comments = []; newUserRating = 0;
+              }
+          };
+
+          $(window).on('hashchange', handleHashChange);
+          handleHashChange(); // Initial page load check
+      });
+    </script>
 </body>
 </html>

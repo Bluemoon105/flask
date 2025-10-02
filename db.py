@@ -12,7 +12,7 @@ DB_PORT = int(os.getenv("DB_PORT", 3306))  # 기본 포트 3306
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_DATABASE = os.getenv("DB_DATABASE")
-
+print(DB_DATABASE)
 def get_db_connection():
     """MariaDB 연결 후 connection 객체 반환"""
     try:
