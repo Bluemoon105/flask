@@ -9,4 +9,4 @@ DB_PORT=3306 \
 DB_USER=root \
 DB_PASSWORD=비밀번호 \
 DB_DATABASE=database이름 \
-FLASK_DEBUG=True \
+FLASK_DEBUG=True 
