@@ -1,6 +1,5 @@
 import os
 from flask import Flask, request, jsonify, render_template
-import requests
 from db import get_db_connection
 from dotenv import load_dotenv
 
