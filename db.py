@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # DB 연결 정보 가져오기
-DB_HOST = os.getenv("DB_HOST")
+DB_HOST = os.getenv("DB_HOST","192.168.0.23")
 DB_PORT = int(os.getenv("DB_PORT", 3306))  # 기본 포트 3306
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DATABASE = os.getenv("DB_DATABASE")
+DB_USER = os.getenv("DB_USER","root")
+DB_PASSWORD = os.getenv("DB_PASSWORD","1111")
+DB_DATABASE = os.getenv("DB_DATABASE","flask")
 
 def get_db_connection():
     """MariaDB 연결 후 connection 객체 반환"""
