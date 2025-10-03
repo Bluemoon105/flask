@@ -15,38 +15,42 @@ def home():
         conn.close()
     return render_template("index.html", name="name")
 
-# 댓글 작성 (Create)
+
 @app.route("/reply", methods=["POST"])
 def create_reply():
     data = request.get_json()
+    print(data)
     post_id = data.get("post_id")
-    member_id = data.get("member_id")
-    contents = data.get("contents")
+    contents = data.get("text")
+    rating = data.get("rating")
+    is_public = data.get("is_spoiler")
 
-    if not (post_id and member_id and contents):
+    if not (post_id and rating and contents):
         return jsonify({"error": "Missing fields"}), 400
 
-    #디비연결해서 쿼리문 작성부분
+
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO reviews (post_id, member_id, contents) VALUES (?, ?, ?)",
-    (post_id, member_id, contents))
+    cur.execute("INSERT INTO reviews (item_id, content, rating, is_public) VALUES (%s, %s, %s, %s)",
+    (post_id, contents,rating, is_public))
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Reply created successfully"}), 201
 
-# 댓글 목록 조회 (Read)
-@app.route("/reply/<int:post_id>", methods=["GET"])
+
+@app.route("/reply/<post_id>", methods=["GET"])
 def get_replies(post_id):
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM reviews WHERE post_id = ?", (post_id,))
-    rows = cur.fetchall()
-    conn.close()
-
-    replies = [dict(row) for row in rows]
-    return jsonify(replies)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM reviews WHERE item_id = %s", (str(post_id),))
+            rows = cur.fetchall()
+            print("skldjflksdjflsdjflkjflskdfklsdfjlksdjflksdfjlksdfjklsdfjklds")
+            print(rows)
+        return jsonify(rows), 200
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
